@@ -242,16 +242,18 @@
         updateMatches(updated); setEditing(null);
       }
       function togglePlayer(matchId, pid) {
+        const numPid = Number(pid);
         const updated = matches.map(m => {
-          if (m.id!==matchId) return m;
-          // Filter out any non-numeric values (e.g. _docId contamination from Firebase)
-          const currentPlayers = (m.players||[]).map(Number).filter(n => !isNaN(n) && n > 0);
-          const numPid = Number(pid);
-          const has = currentPlayers.includes(numPid);
+          if (Number(m.id) !== Number(matchId)) return m;
+          // Get clean numeric array
+          const cur = Array.isArray(m.players)
+            ? m.players.map(Number).filter(n => Number.isInteger(n) && n > 0)
+            : [];
+          const has = cur.includes(numPid);
           const next = has
-            ? currentPlayers.filter(p=>p!==numPid)
-            : currentPlayers.length<4 ? [...currentPlayers, numPid] : currentPlayers;
-          return {...m, players:next};
+            ? cur.filter(n => n !== numPid)
+            : cur.length < 4 ? [...cur, numPid] : cur;
+          return {...m, players: next};
         });
         updateMatches(updated);
       }
@@ -277,20 +279,27 @@
                         target="_blank" rel="noreferrer" style={S.mapBtn}>🗺️ Route</a>
                     )}
                   </div>
-                  <div style={S.subLabel}>👥 SPELERS ({(m.players||[]).map(Number).filter(n=>!isNaN(n)&&n>0).length}/4)</div>
-                  <div style={S.playerGrid}>
-                    {players.map(p => {
-                      const currentPlayers = (m.players||[]).map(Number).filter(n=>!isNaN(n)&&n>0);
-                      const sel = currentPlayers.includes(Number(p.id));
-                      const full = currentPlayers.length>=4 && !sel;
-                      return (
-                        <button key={p.id} onClick={() => !full && togglePlayer(m.id, p.id)}
-                          style={{...S.playerChip, ...(sel?S.playerChipSel:{}), opacity:full?0.35:1}}>
-                          {p.emoji} {p.name}{sel?" ✓":""}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {(() => {
+                    const cur = Array.isArray(m.players)
+                      ? m.players.map(Number).filter(n => Number.isInteger(n) && n > 0)
+                      : [];
+                    return <>
+                      <div style={S.subLabel}>👥 SPELERS ({cur.length}/4)</div>
+                      <div style={S.playerGrid}>
+                        {players.map(p => {
+                          const numId = Number(p.id);
+                          const sel = cur.includes(numId);
+                          const full = cur.length >= 4 && !sel;
+                          return (
+                            <button key={p.id} onClick={() => !full && togglePlayer(m.id, p.id)}
+                              style={{...S.playerChip, ...(sel ? S.playerChipSel : {}), opacity: full ? 0.35 : 1}}>
+                              {p.emoji} {p.name}{sel ? " ✓" : ""}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>;
+                  })()}
                   {editing===m.id ? (
                     <div style={S.editBox}>
                       <input style={S.input} placeholder="Teamscore (bijv. 4-2)"

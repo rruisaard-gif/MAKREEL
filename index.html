@@ -79,7 +79,7 @@
                 setDoc(doc(db(), "_seeded", name), { seeded: true });
               } else {
                 // Empty after seeding = user deleted everything, show empty list
-                const docs = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+                const docs = snap.docs.map(d => d.data()); // no _docId added
                 docs.sort((a,b) => (a.id||0) - (b.id||0));
                 setData(docs);
               }
@@ -229,10 +229,11 @@
 
       function startEdit(m) {
         setEditing(m.id);
+        const cleanPlayers = (m.players||[]).map(Number).filter(n=>!isNaN(n)&&n>0);
         setForm({
           score: m.score,
-          sets: m.players.length
-            ? m.players.map(pid => ({p:plr(pid).name||"", s:m.sets.find(s=>s.p===plr(pid).name)?.s||""}))
+          sets: cleanPlayers.length
+            ? cleanPlayers.map(pid => ({p:plr(pid).name||"", s:m.sets.find(s=>s.p===plr(pid).name)?.s||""}))
             : m.sets,
         });
       }
@@ -243,8 +244,8 @@
       function togglePlayer(matchId, pid) {
         const updated = matches.map(m => {
           if (m.id!==matchId) return m;
-          // Ensure all player ids are numbers for consistent comparison
-          const currentPlayers = (m.players||[]).map(Number);
+          // Filter out any non-numeric values (e.g. _docId contamination from Firebase)
+          const currentPlayers = (m.players||[]).map(Number).filter(n => !isNaN(n) && n > 0);
           const numPid = Number(pid);
           const has = currentPlayers.includes(numPid);
           const next = has
@@ -276,10 +277,10 @@
                         target="_blank" rel="noreferrer" style={S.mapBtn}>🗺️ Route</a>
                     )}
                   </div>
-                  <div style={S.subLabel}>👥 SPELERS ({(m.players||[]).length}/4)</div>
+                  <div style={S.subLabel}>👥 SPELERS ({(m.players||[]).map(Number).filter(n=>!isNaN(n)&&n>0).length}/4)</div>
                   <div style={S.playerGrid}>
                     {players.map(p => {
-                      const currentPlayers = (m.players||[]).map(Number);
+                      const currentPlayers = (m.players||[]).map(Number).filter(n=>!isNaN(n)&&n>0);
                       const sel = currentPlayers.includes(Number(p.id));
                       const full = currentPlayers.length>=4 && !sel;
                       return (
